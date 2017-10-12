@@ -9,6 +9,7 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"mysql": "^2.14.1"
+		"mysql": "^2.14.1",
+		"node-schedule": "^1.2.5"
 	}
 }

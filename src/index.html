@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>同步企业微信通讯录</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <style type="text/css">
+        #app {
+            width:1152px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" >
+        <h2>同步企业微信通讯录</h2>
+        <div class="op-buttons">
+           <button class="op-button" data-name="sync">实时同步</button> 
+        </div>
+        <div class="op-log">
+            
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript">
+        $('.op-buttons').on('click','.op-button',function(e){
+            var nameType = $(e.currentTarget).attr('data-name');
+            $.ajax({
+                 type: "GET",
+                 url: window.location.origin + "/wechat/set",
+                 data: {type:nameType},
+                 dataType: "json",
+                 success: function(data){
+                        // $('#resText').empty();   //清空resText里面的所有内容
+                        var className = 'bh-color-primary-lv1';
+                        if (data.code != 0) {
+                            className = 'bh-color-warning-lv1';
+                        }
+                        var logHtml ="<div class='" + className + "'>" + data.msg + "</div>";
+                        $('.op-log').append(data.msg);
+                 }
+            });
+        });
+    </script>
+</body>
+
+</html>
