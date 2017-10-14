@@ -9,8 +9,10 @@ module.exports = {
 	tableFirstName: 'local_wechat',
 	//访问主页的地址
 	indexUrl: '',
+	//服务器ip或者域名
+	host: '127.0.0.1',
 	//服务的端口号
-	port: 8080,
+	port: 8081,
 	//超级管理员，创建者
 	superAdmin: 'yuqi',
 	//白名单（主要是管理员）

@@ -15,29 +15,45 @@ var targetTable = ''; //表名字
 var keyWord = ''; //表id
 var tokenObj = {}; //token对象
 var allOldOrganization = []; //所有的部门
-
+connection = mysql.createConnection(config.dataBaseConfig);
 /*-------------------------------------------server listen  start----------------------------------------*/
 
 var requestFunction = function(req, res) {
 	console.log('req.url:' + req.url);
 	//主页
-	if (req.url == '/index.html') {
+	if (req.url == '/index.html' || req.url == '/logo.png' || req.url.indexOf('.css') > -1) {
 		return homePage(req, res);
 	}
 	if (req.url.indexOf('/wechat/set') > -1) { //请求类
 		var params = url.parse(req.url, true).query;
 		if (params.type == 'sync') {
-			letUsStart();
+			var syncCallback = function() {
+				res.writeHead(200, {
+					"Content-Type": "text/html"
+				});
+				res.write(JSON.stringify({
+					code: 0,
+					msg: '同步完毕~请点击按钮查看未同步成功的人员信息'
+				}));
+				res.end();
+			};
+			letUsStart(syncCallback);
+		}
+	}
+	if (req.url.indexOf('/wechat/getError') > -1) { //查询类
+		var params = url.parse(req.url, true).query;
+		var errorCallback = function(msg, datas) {
 			res.writeHead(200, {
 				"Content-Type": "text/html"
 			});
 			res.write(JSON.stringify({
 				code: 0,
-				msg: '同步成功'
+				msg: msg,
+				datas: datas
 			}));
 			res.end();
-
-		}
+		};
+		queryErrorTable(params.type, errorCallback);
 	}
 }
 var homePage = function(req, res) {
@@ -49,19 +65,47 @@ var homePage = function(req, res) {
 			res.writeHead(404, {
 				"Content-Type": "text/html"
 			});
+			res.end();
 		} else {
 			//200：OK
-			res.writeHead(200, {
-				"Content-Type": "text/html"
-			});
-			res.write(data.toString());
+			if (req.url.indexOf('png') > -1) {
+				res.writeHead(200, {
+					"Content-Type": "image/png"
+				});
+				//格式必须为 binary 否则会出错
+				//var content =  fs.readFileSync("./" + req.url.substr(1),"binary");   
+				res.write(data, "binary"); //格式必须为 binary，否则会出错
+				res.end();
+			} else if (req.url.indexOf('.css') > -1) {
+				res.writeHead(200, {
+					"Content-Type": "text/css"
+				});
+				res.write(data.toString());
+				res.end();
+			} else {
+				res.writeHead(200, {
+					"Content-Type": "text/html"
+				});
+				res.write(data.toString());
+				res.end();
+			}
 		}
-		res.end();
 	});
 };
-console.log('Server running at http://127.0.0.1:' + config.port + '/');
+var queryErrorTable = function(type, cb) {
+	var tableName = config.tableFirstName + '_' + type + '_error';
+	var querySql = 'select * from `' + tableName + '`';
+	connection.query(querySql, function(err, rows, fields) {
+		if (err) {
+			console.log(err)
+		}
+		cb('查询成功~', rows);
+	});
+
+};
+console.log('Server running at http://' + config.host + ':' + config.port + '/');
 server.on('request', requestFunction);
-server.listen(config.port, "127.0.0.1");
+server.listen(config.port, config.host);
 
 /*-------------------------------------------server listen  end----------------------------------------*/
 
@@ -79,25 +123,32 @@ var targetRootArray = [{
 	"id": 3
 }];
 (function() {
-	// var rule = new schedule.RecurrenceRule();
-	// rule.dayOfWeek = [0, new schedule.Range(1, 6)];
-	// rule.hour = 23;
-	// rule.minute = 59;
-	// //console.log('schedule');
-	// var j = schedule.scheduleJob(rule, function() {
-	// 	//console.log("执行任务");
-	// 	letUsStart();
-	// });
-	letUsStart();
+	var rule = new schedule.RecurrenceRule();
+	rule.dayOfWeek = [0, new schedule.Range(1, 6)];
+	rule.hour = 23;
+	rule.minute = 59;
+	// console.log('schedule');
+	var j = schedule.scheduleJob(rule, function() {
+		// console.log("执行任务");
+		letUsStart();
+	});
+	//letUsStart();
 })()
 
 function test() {
 	console.log(new Date() + '--------------------------\r\n');
 }
 //让我们开始同步吧
-function letUsStart() {
+function letUsStart(cb) {
 	console.log('同步通讯录开始-----');
-	connection = mysql.createConnection(config.dataBaseConfig);
+	//connection = mysql.createConnection(config.dataBaseConfig);
+	//connection = mysql.createPool(config.dataBaseConfig);
+	connection.connect(function(err) {
+		if (err) {
+			console.log(err);
+			return;
+		}
+	});
 	async.waterfall([
 		queryAccessToken,
 		addStudentAndTeacherNode, //添加本科生与教职工两个根节点
@@ -105,10 +156,13 @@ function letUsStart() {
 		addStuOrganizationNode, //本科生节点添加架构表节点
 		addSubOrganizationNode, //教职工添加二级节点
 		addClassToStudentNode,
-		// addTeachersToWechat,
-		// addStudentsToWechat,
+		addTeachersToWechat,
+		addStudentsToWechat,
 	], function(err, result) {
 		console.log('同步通讯录结束-----');
+		if (cb) {
+			cb('同步完毕~');
+		}
 	});
 }
 //查询accesstoken表
@@ -253,11 +307,11 @@ function main(tableName, cb) {
 	} else if ((targetTable.indexOf('zzjgb') > -1) || (targetTable.indexOf('xybjb') > -1)) {
 		keyWord = 'wid';
 	}
-	//var deleteErrorSql = 'DELETE FROM ' + targetTable + '_error';
-	// connection.query(deleteErrorSql, function(err, rows, fields) {
-	// 	if (err) throw err;
-	// 	//console.log('每次同步前，先清空error数据表');
-	// });
+	var deleteErrorSql = 'DELETE FROM ' + targetTable + '_error';
+	connection.query(deleteErrorSql, function(err, rows, fields) {
+		if (err) throw err;
+		//console.log('每次同步前，先清空error数据表');
+	});
 	//直接查询增量数据
 	//如果是查询学生信息表，需要联查学院班级表数据
 	// if (targetTable.indexOf('xsxxb') > -1) {
@@ -280,9 +334,10 @@ function main(tableName, cb) {
 							if (targetItem.department != '2') {
 								targetItem.department = '2' + targetItem.department;
 							}
+							console.log('targetItem.department:' + targetItem.department);
 							addMemberFromTable(targetItem, eachCallback);
 						} else {
-							console.log('userid=' + data.userid + ',name=' + data.name + '条数据电话或邮箱不完整,请至少维护一项。添加失败！');
+							//console.log('userid=' + data.userid + ',name=' + data.name + '条数据电话或邮箱不完整,请至少维护一项。添加失败！');
 							updateErrorTable(targetItem, eachCallback);
 						}
 					} else {
@@ -295,14 +350,19 @@ function main(tableName, cb) {
 			} else if (targetTable.indexOf('xsxxb') > -1) {
 				async.forEachOf(addrows, function(data, key, eachCallback) {
 					var targetItem = data;
-					if (data.userid && data.name && data.department) {
+					if (data.userid && data.name && data.department && data.classid) {
 						if (data.mobile || data.email) {
-							if (targetItem.department != '3') {
-								targetItem.department = '3' + targetItem.department + targetItem.classid;
+							if (isNaN(data.classid)) {
+								console.log('学生的classid不是纯数字,企业微信不支持,添加失败！');
+								updateErrorTable(targetItem, eachCallback);
+							} else {
+								if (targetItem.department != '3') {
+									targetItem.department = '3' + targetItem.department + targetItem.classid;
+								}
+								addMemberFromTable(targetItem, eachCallback);
 							}
-							addMemberFromTable(targetItem, eachCallback);
 						} else {
-							console.log('userid=' + data.userid + ',name=' + data.name + '条数据电话或邮箱不完整,请至少维护一项。添加失败！');
+							//console.log('userid=' + data.userid + ',name=' + data.name + '条数据电话或邮箱不完整,请至少维护一项。添加失败！');
 							updateErrorTable(targetItem, eachCallback);
 						}
 					} else {
@@ -352,14 +412,19 @@ function main(tableName, cb) {
 						var originParentId = targetItem.parentid;
 						var originId = targetItem.id;
 						if (targetItem.bjdm && targetItem.ssxy) {
-							var classNodeObj = {
-								name: targetItem.bjmc,
-								id: Number('3' + targetItem.ssxy + String(targetItem.bjdm)),
-								parentid: Number('3' + targetItem.ssxy),
-								order: '1'
-							};
-							var classNodeObj = Object.assign(classNodeObj, targetItem);
-							addMemberFromTable(classNodeObj, eachCallback);
+							if (isNaN(targetItem.bjdm)) {
+								console.log('班级代码不是纯数字，企业微信不能识别，请修改~');
+								updateErrorTable(targetItem, eachCallback);
+							} else {
+								var classNodeObj = {
+									name: targetItem.bjmc,
+									id: Number('3' + targetItem.ssxy + String(targetItem.bjdm)),
+									parentid: Number('3' + targetItem.ssxy),
+									order: '1'
+								};
+								var classNodeObj = Object.assign(classNodeObj, targetItem);
+								addMemberFromTable(classNodeObj, eachCallback);
+							}
 						} else {
 							console.log('本条数据必填信息不完整：bjmc:' + data.bjmc + ',bjdm=' + data.bjdm + ',name=' + data.name + ';添加失败！');
 							updateErrorTable(targetItem, eachCallback);
@@ -384,6 +449,15 @@ function main(tableName, cb) {
 function addMemberFromTable(item, callback) {
 	//处理department参数
 	var infoPerson = item;
+	if (targetTable.indexOf('xxb') > -1) {
+		infoPerson.department = [Number(infoPerson.department)];
+		//delete infoPerson.bz1;
+		//delete infoPerson.bz2;
+		//delete infoPerson.bz3;
+		//delete infoPerson.bz4;
+		//delete infoPerson.bz5;
+		//console.log(infoPerson);
+	}
 	//只能用JSON的对象格式化，不能用querystring的字符串格式化
 	//var postData = querystring.stringify(infoPerson);
 	var postData = JSON.stringify(infoPerson);
@@ -485,16 +559,46 @@ function getAllWechatMembers(callback) {
 			var resultObj = JSON.parse(result);
 			if (resultObj.errcode == 0) {
 				console.log('获取所有人员---------------------------------\r\n');
-				console.log(resultObj.userlist);
+				//console.log(resultObj.userlist);
 				var allWechatMembers = [];
 				resultObj.userlist.forEach(function(item) {
 					if (lodash.indexOf(config.whiteID, item.userid) == -1) {
 						allWechatMembers.push(item.userid);
 					}
 				});
-				deleteAllWechatMembers({
-					useridlist: allWechatMembers
-				}, callback);
+				//批量删除人员接口，每次最多支持200条
+				function chunk(arr, size) {
+					var arr1 = [];
+					for (var i = 0; i < arr.length; i = i + size) {
+						var arr2 = arr;
+						arr1.push(arr2.slice(i, i + size));
+					}
+					return arr1;
+				}
+				if (allWechatMembers.length > 0) {
+					var newLenghtArray = chunk(allWechatMembers, 200);
+					console.log('newLenghtArray.length:' + newLenghtArray.length);
+					//console.log(newLenghtArray);
+					async.forEachOf(newLenghtArray, function(data, key, eachCallback) {
+							var targetItem = data;
+							deleteAllWechatMembers({
+								useridlist: targetItem
+							}, eachCallback);
+						},
+						function(err) {
+							if (err) {
+								console.log(err);
+							} else {
+								console.log('删除所有成员完毕~');
+							}
+							callback(null, null);
+						});
+				} else {
+					//var newLenghtArray = [];
+					deleteAllWechatMembers({
+						useridlist: allWechatMembers
+					}, callback);
+				}
 			} else {
 				callback(null, null);
 				console.log('errmsg:' + resultObj.errmsg);

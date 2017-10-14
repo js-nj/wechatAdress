@@ -4,30 +4,159 @@
     <title>同步企业微信通讯录</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <link rel="stylesheet" href="./bh-1.2.min.css">
+    <link rel="stylesheet" href="./bh-scenes-1.2.min.css">
     <style type="text/css">
+        body {
+            margin:0;
+            background-color:#eee;
+        }
         #app {
             width:1152px;
+            margin: 0px auto;
+            padding-top:64px;
+            font-family: serif;
+            
+        }
+        h1,h2,h3,h4,h5 {
+            font-family:serif;
+        }
+        table tr td {
+            /*min-width:75px;*/
+            width:70px;
+            
+        }
+        #headerMini {
+            position: fixed;
+            background-color: #734184;
+            height: 48px;
+            color: #333;
+            width: 100%;
+            z-index: 13;
+        }
+        footer {
+            clear: both;
+            width: 100%;
+            height: 32px;
+            bottom: 0;
+            z-index: 11;
+            margin-top: 16px;
+        }
+        .footer {
             margin: 0 auto;
+            padding-top: 8px;
+            height: 32px;
+            text-align: center;
+            background-color: #734184;
+            color: #fff;
+            display: block;
+        }
+        .headerLogo {
+            position:absolute;
+            margin-right: 16px;
+            margin-left: 4px;
+            text-align: center;
+        }
+        .headerLogo img {
+            height: 40px;
+            margin-top: 4px;
         }
     </style>
 </head>
 <body>
-    <div id="app" >
-        <h2>同步企业微信通讯录</h2>
-        <div class="op-buttons">
-           <button class="op-button" data-name="sync">实时同步</button> 
+    <header id="headerMini" class="panel-lv2">
+        <div style="width:1152px;margin:0 auto;positioon:relative;">
+            <div id="headerLogo" class="headerLogo"><img src="/logo.png"></div>
+            <h2 style="color:#fff;line-height: 64px;text-align: center;">同步企业微信通讯录</h2>
         </div>
-        <div class="op-log">
-            
+    </header>
+    <div id="app" >
+        <div class="op-buttons bh-buttons">
+           <button class="op-button bh-btn bh-btn-primary" data-ajax="set" data-name="sync">实时同步通讯录</button>
+           <button class="op-button bh-btn bh-btn-warning" data-ajax="getError" data-name="jsxxb">查询未同步教师名单</button>
+           <button class="op-button bh-btn bh-btn-warning" data-ajax="getError" data-name="xsxxb">查询未同步学生名单</button> 
+        </div>
+        <div class="bh-pv-16">
+            <h4 style="display:inline-block;">同步结果：</h4>
+            <span class="sync-log"></span>
+        </div>
+        <div class="bh-pb-16">
+            <h5 >注意，以下几种情况会导致同步失败：</h5>
+            <div>
+                <div>1、教师无所属机构代码</div>
+                <div>2、教师有所属机构代码，但是此机构代码在组织架构表中不存在，请同步组织架构表</div>
+                <div>3、教师信息中无手机号</div>
+                <div>4、学生无所属学院或者班级代码</div>
+                <div>5、学生有班级代码，但是班级代码格式不正确（必须是全数字，此类班级代码'321A23'不能识别）</div>
+                <div>6、学生无手机号</div>
+                <div>7、学生或教师有手机号，但与已添加至通讯录的某人手机号冲突</div>
+                <div>8、学生或教师有手机号，但手机号格式不正确（只填写一个手机号）</div>
+                <div>9、学生或者教师的学号、职工号重复</div>
+            </div>
+        </div>
+        <div style="overflow:auto;text-align: center;border:solid 1px #ddd;">
+            <div style="float:left;height:600px;overflow:auto;width:calc(50% - 1px);border-right:solid 1px #ddd;">
+                <h5 class="bh-pv-8">查询未同步教师结果：</h5>
+                <div class="jsxxb-log">
+                    <div class="tips"></div>
+                    <table class="bh-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <td>序号</td>
+                                <td>职工号</td>
+                                <td>姓名</td>
+                                <td>部门id</td>
+                                <td>手机号</td>
+                                <td>邮箱</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="float:right;height:600px;overflow:auto;width:50%;">
+                <h5 class="bh-pv-8">查询未同步学生结果：</h5>
+                <div class="xsxxb-log">
+                    <div class="tips"></div>
+                    <table class="bh-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <td>序号</td>
+                                <td>学号</td>
+                                <td>姓名</td>
+                                <td>学院id</td>
+                                <td>班级id</td>
+                                <td>手机号</td>
+                                <td>邮箱</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
+    <footer style="width: 100%;">
+        <div id="normalFooterCopyRight" class="footer">版权信息：© 2015 江苏金智教育信息股份有限公司 苏ICP备10204514号</div>
+    </footer>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
     <script type="text/javascript">
+
         $('.op-buttons').on('click','.op-button',function(e){
             var nameType = $(e.currentTarget).attr('data-name');
+            var getType = $(e.currentTarget).attr('data-ajax');
+            if(nameType != 'sync'){
+                $('.tips','.'+nameType +'-log').html('<div class="tips" style="padding-bottom:16px;">正在请求，请稍等~</div>');
+            }else {
+                $('.'+nameType +'-log').html('正在请求，请稍等~');
+            }
             $.ajax({
                  type: "GET",
-                 url: window.location.origin + "/wechat/set",
+                 url: window.location.origin + "/wechat/"+getType,
                  data: {type:nameType},
                  dataType: "json",
                  success: function(data){
@@ -37,7 +166,25 @@
                             className = 'bh-color-warning-lv1';
                         }
                         var logHtml ="<div class='" + className + "'>" + data.msg + "</div>";
-                        $('.op-log').append(data.msg);
+
+                        var targetClassName = '.'+nameType +'-log';
+                        if (data.datas) {
+                            if (data.datas.length>0) {
+                                $('.tips',targetClassName).html('');
+                                data.datas.forEach(function(item,index){
+                                    var trHtml = '<tr>';
+                                    if (nameType == 'jsxxb') {
+                                        trHtml = trHtml + '<td>'+index+'</td><td>'+item.userid+'</td><td>'+item.name+'</td><td>'+item.department+'</td><td>'+item.mobile+'</td><td>'+item.email+'</td></tr>';
+                                    } else if (nameType == 'xsxxb') {
+                                        trHtml = trHtml + '<td>'+index+'</td><td>'+item.userid+'</td><td>'+item.name+'</td><td>'+item.department+'</td><td>'+item.classid+'</td><td>'+item.mobile+'</td><td>'+item.email+'</td></tr>';
+                                    }
+                                    $('tbody',targetClassName).append(trHtml);
+                                });
+                            }
+                        }else {
+                            $(targetClassName).html(data.msg);
+                        }
+                          
                  }
             });
         });
