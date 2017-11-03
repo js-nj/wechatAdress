@@ -53,7 +53,7 @@ var requestFunction = function(req, res) {
 			}));
 			res.end();
 		};
-		queryErrorTable(params.type, errorCallback);
+		queryErrorTable(params, errorCallback);
 	}
 }
 var homePage = function(req, res) {
@@ -92,16 +92,53 @@ var homePage = function(req, res) {
 		}
 	});
 };
-var queryErrorTable = function(type, cb) {
-	var tableName = config.tableFirstName + '_' + type + '_error';
-	var querySql = 'select * from `' + tableName + '`';
-	connection.query(querySql, function(err, rows, fields) {
-		if (err) {
-			console.log(err)
-		}
-		cb('查询成功~', rows);
-	});
+var queryErrorTable = function(param, cb) {
+	if (param.type != 'one') {
+		var tableName = config.tableFirstName + '_' + param.type + '_error';
+		var querySql = 'select * from `' + tableName + '`';
+		connection.query(querySql, function(err, rows, fields) {
+			if (err) {
+				console.log(err)
+			}
+			cb('查询成功~', rows);
+		});
+	} else {
+		async.parallel([
+				function(callback) {
+					var tableName = config.tableFirstName + '_jsxxb_error';
+					var querySql = 'select * from `' + tableName + '` where userid =' + param.id;
+					connection.query(querySql, function(err, rows, fields) {
+						if (err) {
+							console.log(err)
+						}
+						callback(null, rows);
+					});
+				},
+				function(callback) {
+					var tableName = config.tableFirstName + '_xsxxb_error';
+					var querySql = 'select * from `' + tableName + '` where userid =' + param.id;
+					connection.query(querySql, function(err, rows, fields) {
+						if (err) {
+							console.log(err)
+						}
+						callback(null, rows);
+					});
+				}
+			],
+			function(err, results) {
+				if (err) {
+					console.log(err)
+				}
+				if (results[0].length > 0) {
+					cb('查询成功~', results[0]);
+				} else if (results[1].length > 0) {
+					cb('查询成功~', results[1]);
+				} else {
+					cb('查询成功~', []);
+				}
 
+			});
+	}
 };
 console.log('Server running at http://' + config.host + ':' + config.port + '/');
 server.on('request', requestFunction);

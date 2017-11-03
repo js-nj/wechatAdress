@@ -80,6 +80,35 @@
             <h4 style="display:inline-block;">同步结果：</h4>
             <span class="sync-log"></span>
         </div>
+        <div class="">
+            <div class="op-buttons bh-buttons">
+               <button class="op-button bh-btn bh-btn-warning" data-ajax="getError" data-name="one">查询未同步信息</button>
+               <div style="display:inline-block;width:300px;">
+                  <input id="getErrorOne" class="bh-form-control" type="" name="" placeholder="请输入工号或者学号" /> 
+               </div>
+            </div>
+            <div class="bh-pv-16">
+                <h4 style="display:inline-block;">查询结果：</h4>
+                <span class="one-log">
+                    <div class="tips"></div>
+                    <table class="bh-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <td>序号</td>
+                                <td>职工号/学号</td>
+                                <td>姓名</td>
+                                <td>学院/班级或部门</td>
+                                <td>手机号</td>
+                                <td>邮箱</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                        </tbody>
+                    </table>
+                </span>
+            </div>
+        </div>
         <div class="bh-pb-16">
             <h5 >注意，以下几种情况会导致同步失败：</h5>
             <div>
@@ -149,6 +178,11 @@
         $('.op-buttons').on('click','.op-button',function(e){
             var nameType = $(e.currentTarget).attr('data-name');
             var getType = $(e.currentTarget).attr('data-ajax');
+            var numberId = $('#getErrorOne').val();
+            if (nameType =='one' && (isNaN(numberId) || !numberId)) {
+                alert('请正确填入工号或学号');
+                return;
+            }
             if(nameType != 'sync'){
                 $('.tips','.'+nameType +'-log').html('<div class="tips" style="padding-bottom:16px;">正在请求，请稍等~</div>');
             }else {
@@ -157,7 +191,7 @@
             $.ajax({
                  type: "GET",
                  url: window.location.origin + "/wechat/"+getType,
-                 data: {type:nameType},
+                 data: {type:nameType,id:numberId},
                  dataType: "json",
                  success: function(data){
                         // $('#resText').empty();   //清空resText里面的所有内容
@@ -171,12 +205,21 @@
                         if (data.datas) {
                             if (data.datas.length>0) {
                                 $('.tips',targetClassName).html('');
+                                $('tbody',targetClassName).html('');
                                 data.datas.forEach(function(item,index){
                                     var trHtml = '<tr>';
                                     if (nameType == 'jsxxb') {
                                         trHtml = trHtml + '<td>'+index+'</td><td>'+item.userid+'</td><td>'+item.name+'</td><td>'+item.department+'</td><td>'+item.mobile+'</td><td>'+item.email+'</td></tr>';
                                     } else if (nameType == 'xsxxb') {
                                         trHtml = trHtml + '<td>'+index+'</td><td>'+item.userid+'</td><td>'+item.name+'</td><td>'+item.department+'</td><td>'+item.classid+'</td><td>'+item.mobile+'</td><td>'+item.email+'</td></tr>';
+                                    }else if (nameType == 'one') {
+                                        var tmpStr = '';
+                                        if (item.hasOwnProperty('classid')) {
+                                            tmpStr = '/'+item.classid;
+                                        }else {
+                                            tmpStr = '';
+                                        }
+                                        trHtml = trHtml + '<td>'+index+'</td><td>'+item.userid+'</td><td>'+item.name+'</td><td>'+item.department + tmpStr +'</td><td>'+item.mobile+'</td><td>'+item.email+'</td></tr>';
                                     }
                                     $('tbody',targetClassName).append(trHtml);
                                 });
